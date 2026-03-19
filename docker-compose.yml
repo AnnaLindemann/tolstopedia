@@ -1,0 +1,16 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: tolstopedia-mongo
+    restart: unless-stopped
+    ports:
+      - "27022:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_DATABASE: tolstopedia
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
