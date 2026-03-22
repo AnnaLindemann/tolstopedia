@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "src/app/(public)/gallery/page.tsx"  ],
   "exclude": ["node_modules"]
 }
