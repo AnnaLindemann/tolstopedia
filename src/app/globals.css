@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fffaf8;
+  --foreground: #3d2b2b;
+
+  --card: rgba(255, 255, 255, 0.88);
+  --card-foreground: #3d2b2b;
+
+  --popover: #ffffff;
+  --popover-foreground: #3d2b2b;
+
+  --primary: #f27c9c;
+  --primary-foreground: #ffffff;
+
+  --secondary: #ffe7c7;
+  --secondary-foreground: #5f4b4b;
+
+  --muted: #fff1eb;
+  --muted-foreground: #7a6464;
+
+  --accent: #ffe1ea;
+  --accent-foreground: #6b3f4b;
+
+  --destructive: #d84f6a;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(214, 169, 181, 0.35);
+  --input: rgba(255, 255, 255, 0.95);
+  --ring: rgba(242, 124, 156, 0.35);
+
+  --radius: 1.25rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 215, 227, 0.9), transparent 32%),
+    radial-gradient(circle at top right, rgba(255, 237, 196, 0.85), transparent 30%),
+    linear-gradient(180deg, #fffaf8 0%, #fff4f0 100%);
+  color: var(--foreground);
+  font-family: var(--font-body), Arial, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading), Arial, sans-serif;
+  color: #5d3942;
+}
+
+p,
+label,
+input,
+button,
+textarea {
+  font-family: var(--font-body), Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.5rem);
+}
