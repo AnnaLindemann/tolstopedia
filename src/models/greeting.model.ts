@@ -1,5 +1,89 @@
 import { Schema, model, models, type InferSchemaType, type Model } from "mongoose";
 
+const photoSchema = new Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    width: {
+      type: Number,
+      min: 1,
+      default: null,
+    },
+    height: {
+      type: Number,
+      min: 1,
+      default: null,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+const uploadedVideoSchema = new Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    duration: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    width: {
+      type: Number,
+      min: 1,
+      default: null,
+    },
+    height: {
+      type: Number,
+      min: 1,
+      default: null,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+const externalVideoSchema = new Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    previewImageUrl: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    previewImagePublicId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
 const greetingSchema = new Schema(
   {
     name: {
@@ -21,24 +105,16 @@ const greetingSchema = new Schema(
       maxlength: 3000,
       default: null,
     },
-    photoUrl: {
-      type: String,
-      trim: true,
+    photo: {
+      type: photoSchema,
       default: null,
     },
-    uploadedVideoUrl: {
-      type: String,
-      trim: true,
+    uploadedVideo: {
+      type: uploadedVideoSchema,
       default: null,
     },
-    externalVideoUrl: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    externalVideoPreviewImageUrl: {
-      type: String,
-      trim: true,
+    externalVideo: {
+      type: externalVideoSchema,
       default: null,
     },
     editTokenHash: {
@@ -53,38 +129,63 @@ const greetingSchema = new Schema(
 );
 
 greetingSchema.pre("validate", function normalizeEmptyStrings() {
-  const fields: Array<
-    | "relation"
-    | "message"
-    | "photoUrl"
-    | "uploadedVideoUrl"
-    | "externalVideoUrl"
-    | "externalVideoPreviewImageUrl"
-  > = [
-    "relation",
-    "message",
-    "photoUrl",
-    "uploadedVideoUrl",
-    "externalVideoUrl",
-    "externalVideoPreviewImageUrl",
-  ];
+  if (typeof this.relation === "string" && this.relation.trim() === "") {
+    this.set("relation", null);
+  }
 
-  for (const field of fields) {
-    const value = this.get(field);
+  if (typeof this.message === "string" && this.message.trim() === "") {
+    this.set("message", null);
+  }
 
-    if (typeof value === "string" && value.trim() === "") {
-      this.set(field, null);
+  const photo = this.photo;
+  if (photo && typeof photo.url === "string" && photo.url.trim() === "") {
+    this.set("photo", null);
+  }
+
+  const uploadedVideo = this.uploadedVideo;
+  if (
+    uploadedVideo &&
+    typeof uploadedVideo.url === "string" &&
+    uploadedVideo.url.trim() === ""
+  ) {
+    this.set("uploadedVideo", null);
+  }
+
+  const externalVideo = this.externalVideo;
+  if (externalVideo) {
+    if (typeof externalVideo.url === "string" && externalVideo.url.trim() === "") {
+      this.set("externalVideo", null);
+      return;
+    }
+
+    if (
+      typeof externalVideo.previewImageUrl === "string" &&
+      externalVideo.previewImageUrl.trim() === ""
+    ) {
+      externalVideo.previewImageUrl = null;
+    }
+
+    if (
+      typeof externalVideo.previewImagePublicId === "string" &&
+      externalVideo.previewImagePublicId.trim() === ""
+    ) {
+      externalVideo.previewImagePublicId = null;
     }
   }
 });
 
 greetingSchema.pre("validate", function validateGreetingContent() {
-  const hasMessage = typeof this.message === "string" && this.message.trim().length > 0;
-  const hasPhoto = typeof this.photoUrl === "string" && this.photoUrl.trim().length > 0;
+  const message = this.message;
+  const photo = this.photo;
+  const uploadedVideo = this.uploadedVideo;
+  const externalVideo = this.externalVideo;
+
+  const hasMessage = typeof message === "string" && message.trim().length > 0;
+  const hasPhoto = typeof photo?.url === "string" && photo.url.trim().length > 0;
   const hasUploadedVideo =
-    typeof this.uploadedVideoUrl === "string" && this.uploadedVideoUrl.trim().length > 0;
+    typeof uploadedVideo?.url === "string" && uploadedVideo.url.trim().length > 0;
   const hasExternalVideo =
-    typeof this.externalVideoUrl === "string" && this.externalVideoUrl.trim().length > 0;
+    typeof externalVideo?.url === "string" && externalVideo.url.trim().length > 0;
 
   if (!hasMessage && !hasPhoto && !hasUploadedVideo && !hasExternalVideo) {
     this.invalidate(
@@ -93,13 +194,21 @@ greetingSchema.pre("validate", function validateGreetingContent() {
     );
   }
 
-  if (this.externalVideoPreviewImageUrl && !this.externalVideoUrl) {
+  if (externalVideo?.previewImageUrl && !externalVideo.url) {
     this.invalidate(
-      "externalVideoPreviewImageUrl",
+      "externalVideo.previewImageUrl",
       "Preview image is allowed only together with external video link",
     );
   }
+
+  if (externalVideo?.previewImagePublicId && !externalVideo.previewImageUrl) {
+    this.invalidate(
+      "externalVideo.previewImagePublicId",
+      "Preview image public ID is allowed only together with preview image URL",
+    );
+  }
 });
+
 export type GreetingDocument = InferSchemaType<typeof greetingSchema>;
 
 const GreetingModel =

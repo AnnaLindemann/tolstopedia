@@ -3,12 +3,34 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import GreetingModel from "@/models/greeting.model";
 
+type UploadedImageInput = {
+  url?: string;
+  publicId?: string;
+  width?: number;
+  height?: number;
+};
+
+type UploadedVideoInput = {
+  url?: string;
+  publicId?: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+};
+
+type ExternalVideoInput = {
+  url?: string;
+  previewImageUrl?: string;
+  previewImagePublicId?: string;
+};
+
 type CreateGreetingRequestBody = {
   name?: string;
   relation?: string;
   message?: string;
-  externalVideoUrl?: string;
-  externalVideoPreviewImageUrl?: string;
+  photo?: UploadedImageInput;
+  uploadedVideo?: UploadedVideoInput;
+  externalVideo?: ExternalVideoInput;
 };
 
 function isValidUrl(value: string): boolean {
@@ -33,6 +55,53 @@ async function createEditTokenHash(token: string): Promise<string> {
   return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function normalizePhoto(photo: UploadedImageInput | undefined): UploadedImageInput | null {
+  if (!photo?.url && !photo?.publicId) {
+    return null;
+  }
+
+  return {
+    url: photo.url?.trim() ?? "",
+    publicId: photo.publicId?.trim() ?? "",
+    width: photo.width,
+    height: photo.height,
+  };
+}
+
+function normalizeUploadedVideo(
+  uploadedVideo: UploadedVideoInput | undefined,
+): UploadedVideoInput | null {
+  if (!uploadedVideo?.url && !uploadedVideo?.publicId) {
+    return null;
+  }
+
+  return {
+    url: uploadedVideo.url?.trim() ?? "",
+    publicId: uploadedVideo.publicId?.trim() ?? "",
+    duration: uploadedVideo.duration,
+    width: uploadedVideo.width,
+    height: uploadedVideo.height,
+  };
+}
+
+function normalizeExternalVideo(
+  externalVideo: ExternalVideoInput | undefined,
+): ExternalVideoInput | null {
+  if (
+    !externalVideo?.url &&
+    !externalVideo?.previewImageUrl &&
+    !externalVideo?.previewImagePublicId
+  ) {
+    return null;
+  }
+
+  return {
+    url: externalVideo.url?.trim() ?? "",
+    previewImageUrl: externalVideo.previewImageUrl?.trim() ?? "",
+    previewImagePublicId: externalVideo.previewImagePublicId?.trim() ?? "",
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CreateGreetingRequestBody;
@@ -40,67 +109,170 @@ export async function POST(request: Request) {
     const name = body.name?.trim() ?? "";
     const relation = body.relation?.trim() ?? "";
     const message = body.message?.trim() ?? "";
-    const externalVideoUrl = body.externalVideoUrl?.trim() ?? "";
-    const externalVideoPreviewImageUrl =
-      body.externalVideoPreviewImageUrl?.trim() ?? "";
+
+    const photo = normalizePhoto(body.photo);
+    const uploadedVideo = normalizeUploadedVideo(body.uploadedVideo);
+    const externalVideo = normalizeExternalVideo(body.externalVideo);
 
     if (!name) {
-      return NextResponse.json(
-        { error: "Name is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     if (name.length > 80) {
-      return NextResponse.json(
-        { error: "Name is too long" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Name is too long" }, { status: 400 });
     }
 
     if (relation.length > 80) {
-      return NextResponse.json(
-        { error: "Relation is too long" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Relation is too long" }, { status: 400 });
     }
 
     if (message.length > 3000) {
-      return NextResponse.json(
-        { error: "Message is too long" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Message is too long" }, { status: 400 });
     }
 
-    if (externalVideoUrl && !isValidUrl(externalVideoUrl)) {
-      return NextResponse.json(
-        { error: "External video URL is invalid" },
-        { status: 400 },
-      );
+    if (photo) {
+      if (!photo.url) {
+        return NextResponse.json(
+          { error: "Photo URL is required when photo is provided" },
+          { status: 400 },
+        );
+      }
+
+      if (!photo.publicId) {
+        return NextResponse.json(
+          { error: "Photo publicId is required when photo is provided" },
+          { status: 400 },
+        );
+      }
+
+      if (!isValidUrl(photo.url)) {
+        return NextResponse.json({ error: "Photo URL is invalid" }, { status: 400 });
+      }
+
+      if (photo.width !== undefined && (!Number.isFinite(photo.width) || photo.width <= 0)) {
+        return NextResponse.json({ error: "Photo width is invalid" }, { status: 400 });
+      }
+
+      if (
+        photo.height !== undefined &&
+        (!Number.isFinite(photo.height) || photo.height <= 0)
+      ) {
+        return NextResponse.json({ error: "Photo height is invalid" }, { status: 400 });
+      }
     }
 
-    if (
-      externalVideoPreviewImageUrl &&
-      !isValidUrl(externalVideoPreviewImageUrl)
-    ) {
-      return NextResponse.json(
-        { error: "External video preview image URL is invalid" },
-        { status: 400 },
-      );
+    if (uploadedVideo) {
+      if (!uploadedVideo.url) {
+        return NextResponse.json(
+          { error: "Uploaded video URL is required when uploaded video is provided" },
+          { status: 400 },
+        );
+      }
+
+      if (!uploadedVideo.publicId) {
+        return NextResponse.json(
+          {
+            error: "Uploaded video publicId is required when uploaded video is provided",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (!isValidUrl(uploadedVideo.url)) {
+        return NextResponse.json(
+          { error: "Uploaded video URL is invalid" },
+          { status: 400 },
+        );
+      }
+
+      if (
+        uploadedVideo.duration !== undefined &&
+        (!Number.isFinite(uploadedVideo.duration) || uploadedVideo.duration < 0)
+      ) {
+        return NextResponse.json(
+          { error: "Uploaded video duration is invalid" },
+          { status: 400 },
+        );
+      }
+
+      if (
+        uploadedVideo.width !== undefined &&
+        (!Number.isFinite(uploadedVideo.width) || uploadedVideo.width <= 0)
+      ) {
+        return NextResponse.json(
+          { error: "Uploaded video width is invalid" },
+          { status: 400 },
+        );
+      }
+
+      if (
+        uploadedVideo.height !== undefined &&
+        (!Number.isFinite(uploadedVideo.height) || uploadedVideo.height <= 0)
+      ) {
+        return NextResponse.json(
+          { error: "Uploaded video height is invalid" },
+          { status: 400 },
+        );
+      }
     }
 
-    if (!message && !externalVideoUrl) {
-      return NextResponse.json(
-        { error: "Greeting must contain message or external video URL" },
-        { status: 400 },
-      );
+    if (externalVideo) {
+      if (externalVideo.url && !isValidUrl(externalVideo.url)) {
+        return NextResponse.json(
+          { error: "External video URL is invalid" },
+          { status: 400 },
+        );
+      }
+
+      if (externalVideo.previewImageUrl) {
+        if (!externalVideo.url) {
+          return NextResponse.json(
+            {
+              error:
+                "External video preview image URL is allowed only with external video URL",
+            },
+            { status: 400 },
+          );
+        }
+
+        if (!isValidUrl(externalVideo.previewImageUrl)) {
+          return NextResponse.json(
+            { error: "External video preview image URL is invalid" },
+            { status: 400 },
+          );
+        }
+      }
+
+      if (externalVideo.previewImagePublicId && !externalVideo.previewImageUrl) {
+        return NextResponse.json(
+          {
+            error:
+              "External video preview image publicId is allowed only with external video preview image URL",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (!externalVideo.url && (externalVideo.previewImageUrl || externalVideo.previewImagePublicId)) {
+        return NextResponse.json(
+          {
+            error: "External video preview image is allowed only with external video URL",
+          },
+          { status: 400 },
+        );
+      }
     }
 
-    if (externalVideoPreviewImageUrl && !externalVideoUrl) {
+    const hasMessage = Boolean(message);
+    const hasPhoto = Boolean(photo);
+    const hasUploadedVideo = Boolean(uploadedVideo);
+    const hasExternalVideo = Boolean(externalVideo?.url);
+
+    if (!hasMessage && !hasPhoto && !hasUploadedVideo && !hasExternalVideo) {
       return NextResponse.json(
         {
           error:
-            "External video preview image URL is allowed only with external video URL",
+            "Greeting must contain at least one of: message, photo, uploaded video, or external video URL",
         },
         { status: 400 },
       );
@@ -115,17 +287,37 @@ export async function POST(request: Request) {
       name,
       relation: relation || null,
       message: message || null,
-      photoUrl: null,
-      uploadedVideoUrl: null,
-      externalVideoUrl: externalVideoUrl || null,
-      externalVideoPreviewImageUrl: externalVideoPreviewImageUrl || null,
+      photo: photo
+        ? {
+            url: photo.url,
+            publicId: photo.publicId,
+            width: photo.width,
+            height: photo.height,
+          }
+        : null,
+      uploadedVideo: uploadedVideo
+        ? {
+            url: uploadedVideo.url,
+            publicId: uploadedVideo.publicId,
+            duration: uploadedVideo.duration,
+            width: uploadedVideo.width,
+            height: uploadedVideo.height,
+          }
+        : null,
+      externalVideo: externalVideo?.url
+        ? {
+            url: externalVideo.url,
+            previewImageUrl: externalVideo.previewImageUrl || null,
+            previewImagePublicId: externalVideo.previewImagePublicId || null,
+          }
+        : null,
       editTokenHash,
     });
 
     return NextResponse.json(
       {
         success: true,
-        greetingId: greeting._id.toString(),
+        greetingId: String(greeting.id),
         editToken,
       },
       { status: 201 },

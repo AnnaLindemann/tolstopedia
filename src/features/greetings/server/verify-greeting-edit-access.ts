@@ -1,36 +1,56 @@
-import "server-only";
+import { connectToDatabase } from "@/lib/db";
+import GreetingModel from "@/models/greeting.model";
 
-import { isValidObjectId } from "mongoose";
-
-import  GreetingModel  from "@/models/greeting.model";
-
-type VerifyGreetingEditAccessSuccess = {
-  ok: true;
-  greeting: {
-    id: string;
-    name: string;
-    relation: string;
-    message: string;
-    externalVideoUrl: string;
-    externalVideoPreviewImageUrl: string;
-  };
+type VerifyGreetingEditAccessParams = {
+  greetingId: string;
+  token: string;
 };
 
-type VerifyGreetingEditAccessErrorCode =
-  | "INVALID_ID"
-  | "MISSING_TOKEN"
-  | "NOT_FOUND"
-  | "FORBIDDEN";
+type VerifyGreetingEditAccessResult =
+  | {
+      ok: true;
+      greeting: {
+        id: string;
+        name: string;
+        relation: string;
+        message: string;
+        photoUrl: string;
+        uploadedVideoUrl: string;
+        externalVideoUrl: string;
+        externalVideoPreviewImageUrl: string;
+      };
+    }
+  | {
+      ok: false;
+      code: "NOT_FOUND" | "FORBIDDEN";
+      message: string;
+    };
 
-type VerifyGreetingEditAccessError = {
-  ok: false;
-  code: VerifyGreetingEditAccessErrorCode;
-  message: string;
+type GreetingLeanDocument = {
+  _id: unknown;
+  name?: string | null;
+  relation?: string | null;
+  message?: string | null;
+  editTokenHash?: string | null;
+  photo?: {
+    url?: string | null;
+  } | null;
+  uploadedVideo?: {
+    url?: string | null;
+  } | null;
+  externalVideo?: {
+    url?: string | null;
+    previewImageUrl?: string | null;
+  } | null;
 };
 
-export type VerifyGreetingEditAccessResult =
-  | VerifyGreetingEditAccessSuccess
-  | VerifyGreetingEditAccessError;
+function isValidObjectId(value: string): boolean {
+  return /^[a-f\d]{24}$/i.test(value);
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
 
 async function createEditTokenHash(token: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -41,27 +61,21 @@ async function createEditTokenHash(token: string): Promise<string> {
   return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function verifyGreetingEditAccess(
-  greetingId: string,
-  token: string | null,
-): Promise<VerifyGreetingEditAccessResult> {
+export async function verifyGreetingEditAccess({
+  greetingId,
+  token,
+}: VerifyGreetingEditAccessParams): Promise<VerifyGreetingEditAccessResult> {
   if (!isValidObjectId(greetingId)) {
     return {
       ok: false,
-      code: "INVALID_ID",
-      message: "Некорректная ссылка для редактирования.",
+      code: "NOT_FOUND",
+      message: "Поздравление не найдено.",
     };
   }
 
-  if (!token || token.trim().length === 0) {
-    return {
-      ok: false,
-      code: "MISSING_TOKEN",
-      message: "В ссылке отсутствует ключ редактирования.",
-    };
-  }
+  await connectToDatabase();
 
-  const greeting = await GreetingModel.findById(greetingId).lean();
+  const greeting = await GreetingModel.findById(greetingId).lean<GreetingLeanDocument | null>();
 
   if (!greeting) {
     return {
@@ -73,7 +87,7 @@ export async function verifyGreetingEditAccess(
 
   const tokenHash = await createEditTokenHash(token);
 
-  if (!greeting.editTokenHash || greeting.editTokenHash !== tokenHash) {
+  if (greeting.editTokenHash !== tokenHash) {
     return {
       ok: false,
       code: "FORBIDDEN",
@@ -85,12 +99,15 @@ export async function verifyGreetingEditAccess(
     ok: true,
     greeting: {
       id: String(greeting._id),
-      name: greeting.name ?? "",
-      relation: greeting.relation ?? "",
-      message: greeting.message ?? "",
-      externalVideoUrl: greeting.externalVideoUrl ?? "",
-      externalVideoPreviewImageUrl:
-        greeting.externalVideoPreviewImageUrl ?? "",
+      name: normalizeString(greeting.name),
+      relation: normalizeString(greeting.relation),
+      message: normalizeString(greeting.message),
+      photoUrl: normalizeString(greeting.photo?.url),
+      uploadedVideoUrl: normalizeString(greeting.uploadedVideo?.url),
+      externalVideoUrl: normalizeString(greeting.externalVideo?.url),
+      externalVideoPreviewImageUrl: normalizeString(
+        greeting.externalVideo?.previewImageUrl,
+      ),
     },
   };
 }

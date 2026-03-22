@@ -19,7 +19,10 @@ export default async function EditGreetingPage({
   const { id } = await params;
   const { token } = await searchParams;
 
-  const result = await verifyGreetingEditAccess(id, token ?? null);
+  const result = await verifyGreetingEditAccess({
+    greetingId: id,
+    token: token ?? "",
+  });
 
   if (!result.ok) {
     return (
@@ -55,7 +58,8 @@ export default async function EditGreetingPage({
         </h1>
         <p className="mt-3 text-base leading-7 text-neutral-700">
           Сейчас можно изменить имя, подпись, текст поздравления и ссылки на
-          внешнее видео.
+          внешнее видео. Загруженные фото и видео пока доступны только для
+          просмотра.
         </p>
 
         <EditGreetingForm
@@ -65,6 +69,8 @@ export default async function EditGreetingPage({
             name: result.greeting.name,
             relation: result.greeting.relation,
             message: result.greeting.message,
+            photoUrl: result.greeting.photoUrl,
+            uploadedVideoUrl: result.greeting.uploadedVideoUrl,
             externalVideoUrl: result.greeting.externalVideoUrl,
             externalVideoPreviewImageUrl:
               result.greeting.externalVideoPreviewImageUrl,

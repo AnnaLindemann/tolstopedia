@@ -11,6 +11,25 @@ type EditGreetingFormValues = {
   message: string;
   externalVideoUrl: string;
   externalVideoPreviewImageUrl: string;
+  photoUrl?: string;
+  uploadedVideoUrl?: string;
+};
+
+type UploadedAsset = {
+  url: string;
+  publicId: string;
+};
+
+type UploadResponse = {
+  success: true;
+  asset: UploadedAsset & {
+    width?: number;
+    height?: number;
+    bytes?: number;
+    format?: string;
+    resourceType?: string;
+    originalFilename?: string;
+  };
 };
 
 type EditGreetingResponse = {
@@ -21,6 +40,8 @@ type EditGreetingResponse = {
     name: string;
     relation: string;
     message: string;
+    photoUrl?: string;
+    uploadedVideoUrl?: string;
     externalVideoUrl: string;
     externalVideoPreviewImageUrl: string;
   };
@@ -34,6 +55,60 @@ type DeleteGreetingResponse = {
 type EditGreetingFormProps = {
   initialValues: EditGreetingFormValues;
 };
+
+function isUploadResponse(value: unknown): value is UploadResponse {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (candidate.success !== true) {
+    return false;
+  }
+
+  if (typeof candidate.asset !== "object" || candidate.asset === null) {
+    return false;
+  }
+
+  const asset = candidate.asset as Record<string, unknown>;
+
+  return (
+    typeof asset.url === "string" &&
+    asset.url.length > 0 &&
+    typeof asset.publicId === "string" &&
+    asset.publicId.length > 0
+  );
+}
+
+async function uploadFile(params: {
+  file: File;
+  folder: string;
+}): Promise<UploadedAsset> {
+  const formData = new FormData();
+  formData.append("file", params.file);
+  formData.append("folder", params.folder);
+
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить файл");
+  }
+
+  if (!isUploadResponse(data)) {
+    throw new Error("Сервер вернул некорректный ответ при загрузке файла");
+  }
+
+  return {
+    url: data.asset.url,
+    publicId: data.asset.publicId,
+  };
+}
 
 export function EditGreetingForm({
   initialValues,
@@ -49,31 +124,72 @@ export function EditGreetingForm({
     setExternalVideoPreviewImageUrl,
   ] = useState(initialValues.externalVideoPreviewImageUrl);
 
+  const [currentPhotoUrl, setCurrentPhotoUrl] = useState(initialValues.photoUrl ?? "");
+  const [currentUploadedVideoUrl, setCurrentUploadedVideoUrl] = useState(
+    initialValues.uploadedVideoUrl ?? "",
+  );
+
+  const [clearPhoto, setClearPhoto] = useState(false);
+  const [clearUploadedVideo, setClearUploadedVideo] = useState(false);
+
+  const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
+  const [newUploadedVideoFile, setNewUploadedVideoFile] = useState<File | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showSavedState, setShowSavedState] = useState(false);
   const [showDeletedState, setShowDeletedState] = useState(false);
 
+  const trimmedName = useMemo(() => name.trim(), [name]);
+  const trimmedRelation = useMemo(() => relation.trim(), [relation]);
   const trimmedMessage = useMemo(() => message.trim(), [message]);
   const trimmedExternalVideoUrl = useMemo(
     () => externalVideoUrl.trim(),
     [externalVideoUrl],
   );
+  const trimmedExternalVideoPreviewImageUrl = useMemo(
+    () => externalVideoPreviewImageUrl.trim(),
+    [externalVideoPreviewImageUrl],
+  );
+
+  const willHavePhoto = !clearPhoto && (Boolean(newPhotoFile) || Boolean(currentPhotoUrl));
+  const willHaveUploadedVideo =
+    !clearUploadedVideo &&
+    (Boolean(newUploadedVideoFile) || Boolean(currentUploadedVideoUrl));
+
+  const hasAtLeastOneContent =
+    trimmedMessage.length > 0 ||
+    trimmedExternalVideoUrl.length > 0 ||
+    willHavePhoto ||
+    willHaveUploadedVideo;
 
   const canSubmit =
     !isSubmitting &&
     !isDeleting &&
-    (trimmedMessage.length > 0 || trimmedExternalVideoUrl.length > 0);
+    trimmedName.length > 0 &&
+    hasAtLeastOneContent;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErrorMessage("");
 
-    if (!trimmedMessage && !trimmedExternalVideoUrl) {
+    if (!trimmedName) {
+      setErrorMessage("Введите имя.");
+      return;
+    }
+
+    if (!hasAtLeastOneContent) {
       setErrorMessage(
-        "Оставьте хотя бы текст поздравления или ссылку на внешнее видео.",
+        "Должно остаться хотя бы одно содержимое: текст, фото, загруженное видео или ссылка на внешнее видео.",
+      );
+      return;
+    }
+
+    if (trimmedExternalVideoPreviewImageUrl && !trimmedExternalVideoUrl) {
+      setErrorMessage(
+        "Ссылка на превью видео возможна только вместе со ссылкой на внешнее видео.",
       );
       return;
     }
@@ -81,6 +197,20 @@ export function EditGreetingForm({
     setIsSubmitting(true);
 
     try {
+      const uploadedPhoto = newPhotoFile
+        ? await uploadFile({
+            file: newPhotoFile,
+            folder: "mom-site/greetings/photos",
+          })
+        : null;
+
+      const uploadedVideo = newUploadedVideoFile
+        ? await uploadFile({
+            file: newUploadedVideoFile,
+            folder: "mom-site/greetings/videos",
+          })
+        : null;
+
       const response = await fetch(`/api/greetings/${initialValues.id}`, {
         method: "PATCH",
         headers: {
@@ -88,11 +218,15 @@ export function EditGreetingForm({
         },
         body: JSON.stringify({
           token: initialValues.token,
-          name,
-          relation,
-          message,
-          externalVideoUrl,
-          externalVideoPreviewImageUrl,
+          name: trimmedName,
+          relation: trimmedRelation,
+          message: trimmedMessage,
+          externalVideoUrl: trimmedExternalVideoUrl,
+          externalVideoPreviewImageUrl: trimmedExternalVideoPreviewImageUrl,
+          clearPhoto,
+          clearUploadedVideo,
+          photo: uploadedPhoto,
+          uploadedVideo: uploadedVideo,
         }),
       });
 
@@ -113,11 +247,29 @@ export function EditGreetingForm({
         setExternalVideoPreviewImageUrl(
           data.greeting.externalVideoPreviewImageUrl,
         );
+        setCurrentPhotoUrl(data.greeting.photoUrl ?? "");
+        setCurrentUploadedVideoUrl(data.greeting.uploadedVideoUrl ?? "");
+      } else {
+        if (clearPhoto) {
+          setCurrentPhotoUrl("");
+        }
+
+        if (clearUploadedVideo) {
+          setCurrentUploadedVideoUrl("");
+        }
       }
 
+      setClearPhoto(false);
+      setClearUploadedVideo(false);
+      setNewPhotoFile(null);
+      setNewUploadedVideoFile(null);
       setShowSavedState(true);
-    } catch {
-      setErrorMessage("Не удалось сохранить изменения. Проверьте соединение.");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Не удалось сохранить изменения. Проверьте соединение.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -168,6 +320,44 @@ export function EditGreetingForm({
   function handleContinueEditing() {
     setErrorMessage("");
     setShowSavedState(false);
+  }
+
+  function handleRemovePhoto(): void {
+    setClearPhoto(true);
+    setNewPhotoFile(null);
+  }
+
+  function handleUndoRemovePhoto(): void {
+    setClearPhoto(false);
+  }
+
+  function handleRemoveUploadedVideo(): void {
+    setClearUploadedVideo(true);
+    setNewUploadedVideoFile(null);
+  }
+
+  function handleUndoRemoveUploadedVideo(): void {
+    setClearUploadedVideo(false);
+  }
+
+  function handleNewPhotoChange(event: React.ChangeEvent<HTMLInputElement>): void {
+    const file = event.target.files?.[0] ?? null;
+    setNewPhotoFile(file);
+
+    if (file) {
+      setClearPhoto(false);
+    }
+  }
+
+  function handleNewUploadedVideoChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void {
+    const file = event.target.files?.[0] ?? null;
+    setNewUploadedVideoFile(file);
+
+    if (file) {
+      setClearUploadedVideo(false);
+    }
   }
 
   if (showDeletedState) {
@@ -229,10 +419,7 @@ export function EditGreetingForm({
   return (
     <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <label
-          htmlFor="name"
-          className="text-sm font-medium text-neutral-900"
-        >
+        <label htmlFor="name" className="text-sm font-medium text-neutral-900">
           Ваше имя
         </label>
         <input
@@ -285,12 +472,133 @@ export function EditGreetingForm({
         />
       </div>
 
+      {currentPhotoUrl && !clearPhoto ? (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-neutral-900">Текущее фото</p>
+          <img
+            src={currentPhotoUrl}
+            alt="Greeting photo"
+            className="h-56 w-full rounded-2xl border border-neutral-200 object-cover"
+          />
+
+          <button
+            type="button"
+            onClick={handleRemovePhoto}
+            disabled={isSubmitting || isDeleting}
+            className="inline-flex rounded-full border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Удалить фото
+          </button>
+        </div>
+      ) : null}
+
+      {currentPhotoUrl && clearPhoto ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Фото будет удалено после сохранения.
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleUndoRemovePhoto}
+              disabled={isSubmitting || isDeleting}
+              className="inline-flex rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Отменить удаление фото
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <label
+          htmlFor="newPhoto"
+          className="text-sm font-medium text-neutral-900"
+        >
+          Загрузить новое фото
+        </label>
+        <input
+          id="newPhoto"
+          type="file"
+          accept="image/*"
+          onChange={handleNewPhotoChange}
+          disabled={isSubmitting || isDeleting}
+          className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900"
+        />
+        {newPhotoFile ? (
+          <p className="text-sm text-neutral-600">
+            Выбран файл: {newPhotoFile.name}
+          </p>
+        ) : null}
+      </div>
+
+      {currentUploadedVideoUrl && !clearUploadedVideo ? (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-neutral-900">
+            Текущее загруженное видео
+          </p>
+          <video
+            src={currentUploadedVideoUrl}
+            controls
+            preload="metadata"
+            className="h-56 w-full rounded-2xl border border-neutral-200 bg-black object-cover"
+          >
+            Ваш браузер не поддерживает видео.
+          </video>
+
+          <button
+            type="button"
+            onClick={handleRemoveUploadedVideo}
+            disabled={isSubmitting || isDeleting}
+            className="inline-flex rounded-full border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Удалить видео
+          </button>
+        </div>
+      ) : null}
+
+      {currentUploadedVideoUrl && clearUploadedVideo ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Видео будет удалено после сохранения.
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleUndoRemoveUploadedVideo}
+              disabled={isSubmitting || isDeleting}
+              className="inline-flex rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Отменить удаление видео
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <label
+          htmlFor="newUploadedVideo"
+          className="text-sm font-medium text-neutral-900"
+        >
+          Загрузить новое видео
+        </label>
+        <input
+          id="newUploadedVideo"
+          type="file"
+          accept="video/*"
+          onChange={handleNewUploadedVideoChange}
+          disabled={isSubmitting || isDeleting}
+          className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900"
+        />
+        {newUploadedVideoFile ? (
+          <p className="text-sm text-neutral-600">
+            Выбран файл: {newUploadedVideoFile.name}
+          </p>
+        ) : null}
+      </div>
+
       <div className="space-y-2">
         <label
           htmlFor="externalVideoUrl"
           className="text-sm font-medium text-neutral-900"
         >
-          Ссылка на видео
+          Ссылка на внешнее видео
         </label>
         <input
           id="externalVideoUrl"
@@ -325,6 +633,32 @@ export function EditGreetingForm({
         />
       </div>
 
+      {trimmedExternalVideoPreviewImageUrl ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-neutral-900">
+            Текущее превью внешнего видео
+          </p>
+          <img
+            src={trimmedExternalVideoPreviewImageUrl}
+            alt="External video preview"
+            className="h-56 w-full rounded-2xl border border-neutral-200 object-cover"
+          />
+        </div>
+      ) : null}
+
+      {trimmedExternalVideoUrl ? (
+        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+          <a
+            href={trimmedExternalVideoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-rose-600 underline-offset-4 hover:underline"
+          >
+            Открыть внешнее видео
+          </a>
+        </div>
+      ) : null}
+
       {errorMessage ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
           {errorMessage}
@@ -332,8 +666,8 @@ export function EditGreetingForm({
       ) : null}
 
       <div className="rounded-2xl bg-neutral-50 p-4 text-sm leading-6 text-neutral-600">
-        Можно изменить имя, подпись, текст поздравления и ссылки на внешнее
-        видео. Загруженные файлы пока не редактируются.
+        Можно изменить имя, подпись, текст поздравления, внешнюю ссылку на большое
+        видео, удалить текущие загруженные файлы и загрузить новые.
       </div>
 
       <div className="flex flex-wrap gap-3">
