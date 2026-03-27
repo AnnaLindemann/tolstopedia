@@ -22,7 +22,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Мамин сайт",
+  title: "NTV",
   description: "Семейный сайт с поздравлениями для мамы",
 };
 
