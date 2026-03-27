@@ -8,6 +8,14 @@ type UploadFileParams = {
   folder?: string;
 };
 
+type UploadResponse = {
+  success: true;
+  asset: {
+    url: string;
+    publicId: string;
+  };
+};
+
 export async function uploadFile({
   file,
   folder = "mom-site",
@@ -27,22 +35,32 @@ export async function uploadFile({
 
   const data: unknown = await response.json();
 
-  if (!isUploadedAssetResponse(data)) {
+  if (!isUploadResponse(data)) {
     throw new Error("Invalid upload response");
   }
 
   return {
-    url: data.url,
-    publicId: data.publicId,
+    url: data.asset.url,
+    publicId: data.asset.publicId,
   };
 }
 
-function isUploadedAssetResponse(value: unknown): value is UploadedAsset {
+function isUploadResponse(value: unknown): value is UploadResponse {
   if (typeof value !== "object" || value === null) {
     return false;
   }
 
   const candidate = value as Record<string, unknown>;
 
-  return typeof candidate.url === "string" && typeof candidate.publicId === "string";
+  if (candidate.success !== true) {
+    return false;
+  }
+
+  if (typeof candidate.asset !== "object" || candidate.asset === null) {
+    return false;
+  }
+
+  const asset = candidate.asset as Record<string, unknown>;
+
+  return typeof asset.url === "string" && typeof asset.publicId === "string";
 }
