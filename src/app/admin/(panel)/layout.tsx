@@ -17,13 +17,7 @@ export default function AdminPanelLayout({
           </div>
 
           <nav className="space-y-2">
-            <Link
-              href="/admin"
-              className="block rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100"
-            >
-              Главная
-            </Link>
-            <Link
+               <Link
               href="/admin/mom-page"
               className="block rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100"
             >
