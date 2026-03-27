@@ -72,8 +72,6 @@ export default async function EditGreetingPage({
             photoUrl: result.greeting.photoUrl,
             uploadedVideoUrl: result.greeting.uploadedVideoUrl,
             externalVideoUrl: result.greeting.externalVideoUrl,
-            externalVideoPreviewImageUrl:
-              result.greeting.externalVideoPreviewImageUrl,
           }}
         />
       </section>

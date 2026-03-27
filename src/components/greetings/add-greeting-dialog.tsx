@@ -21,13 +21,7 @@ type FormValues = {
 };
 
 type FormErrors = Partial<
-  Record<
-    | keyof FormValues
-    | "photo"
-    | "uploadedVideo"
-    | "externalVideoPreviewImage",
-    string
-  >
+  Record<keyof FormValues | "photo" | "uploadedVideo", string>
 >;
 
 type SubmitSuccessData = {
@@ -109,10 +103,8 @@ function validateForm(params: {
   values: FormValues;
   photoFile: File | null;
   uploadedVideoFile: File | null;
-  externalVideoPreviewImageFile: File | null;
 }): FormErrors {
-  const { values, photoFile, uploadedVideoFile, externalVideoPreviewImageFile } =
-    params;
+  const { values, photoFile, uploadedVideoFile } = params;
 
   const errors: FormErrors = {};
 
@@ -148,11 +140,6 @@ function validateForm(params: {
   if (!hasAtLeastOneContent) {
     errors.message =
       "Добавьте хотя бы что-то одно: текст, фото, видео или ссылку на внешнее видео";
-  }
-
-  if (externalVideoPreviewImageFile && !trimmedExternalVideoUrl) {
-    errors.externalVideoPreviewImage =
-      "Превью-картинка возможна только вместе со ссылкой на внешнее видео";
   }
 
   return errors;
@@ -233,8 +220,7 @@ export function AddGreetingDialog() {
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [uploadedVideoFile, setUploadedVideoFile] = useState<File | null>(null);
-  const [externalVideoPreviewImageFile, setExternalVideoPreviewImageFile] =
-    useState<File | null>(null);
+  const [showExternalVideoInput, setShowExternalVideoInput] = useState(false);
 
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
@@ -247,7 +233,7 @@ export function AddGreetingDialog() {
     setCopyState("");
     setPhotoFile(null);
     setUploadedVideoFile(null);
-    setExternalVideoPreviewImageFile(null);
+    setShowExternalVideoInput(false);
   }
 
   function closeDialog(): void {
@@ -337,27 +323,6 @@ export function AddGreetingDialog() {
     }
   }
 
-  function handleExternalVideoPreviewImageChange(
-    event: ChangeEvent<HTMLInputElement>,
-  ): void {
-    const file = event.target.files?.[0] ?? null;
-    setExternalVideoPreviewImageFile(file);
-
-    setErrors((prev) => {
-      if (!prev.externalVideoPreviewImage) {
-        return prev;
-      }
-
-      const nextErrors = { ...prev };
-      delete nextErrors.externalVideoPreviewImage;
-      return nextErrors;
-    });
-
-    if (submitError) {
-      setSubmitError("");
-    }
-  }
-
   function handleOverlayClick(): void {
     closeDialog();
   }
@@ -386,7 +351,6 @@ export function AddGreetingDialog() {
       values,
       photoFile,
       uploadedVideoFile,
-      externalVideoPreviewImageFile,
     });
 
     setErrors(nextErrors);
@@ -418,14 +382,6 @@ export function AddGreetingDialog() {
           })
         : null;
 
-      const uploadedExternalPreview =
-        trimmedExternalVideoUrl && externalVideoPreviewImageFile
-          ? await uploadFile({
-              file: externalVideoPreviewImageFile,
-              folder: "mom-site/greetings/external-preview",
-            })
-          : null;
-
       const body = {
         name: trimmedName,
         relation: trimmedRelation || undefined,
@@ -433,11 +389,7 @@ export function AddGreetingDialog() {
         photo: uploadedPhoto,
         uploadedVideo,
         externalVideo: trimmedExternalVideoUrl
-          ? {
-              url: trimmedExternalVideoUrl,
-              previewImageUrl: uploadedExternalPreview?.url,
-              previewImagePublicId: uploadedExternalPreview?.publicId,
-            }
+          ? { url: trimmedExternalVideoUrl }
           : null,
       };
 
@@ -531,7 +483,7 @@ export function AddGreetingDialog() {
           onClick={handleOverlayClick}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-background p-6 shadow-xl"
+            className="relative z-[60] isolate max-h-[90vh] w-full max-w-2xl overflow-y-auto overflow-x-hidden rounded-[32px] bg-[linear-gradient(180deg,#fffaf7_0%,#fff5ef_100%)] p-6 shadow-2xl sm:p-8"
             onClick={handleDialogCardClick}
           >
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -542,7 +494,7 @@ export function AddGreetingDialog() {
                 >
                   {successData ? "Поздравление сохранено" : "Добавить поздравление"}
                 </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {successData
                     ? "Сохраните ссылку в надёжное место. По ней вы сможете позже изменить своё поздравление."
                     : "Оставьте тёплые слова, добавьте фото, видео или ссылку на внешнее видео."}
@@ -552,7 +504,7 @@ export function AddGreetingDialog() {
               <button
                 type="button"
                 onClick={closeDialog}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-lg text-muted-foreground transition hover:bg-muted"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-rose-200 bg-white/90 text-lg text-rose-500 shadow-sm transition hover:bg-rose-50"
                 aria-label="Закрыть"
               >
                 ×
@@ -567,10 +519,15 @@ export function AddGreetingDialog() {
 
                 <div className="space-y-2">
                   <Label htmlFor="editLink">Ссылка для редактирования</Label>
-                  <Input id="editLink" value={editLink} readOnly />
+                  <Input
+                    id="editLink"
+                    value={editLink}
+                    readOnly
+                    className="h-12 rounded-2xl border-rose-200 bg-white"
+                  />
                 </div>
 
-                <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-rose-100 bg-white/80 p-4 text-sm leading-6 text-muted-foreground">
                   <p>
                     Сохраните эту ссылку в заметках, мессенджере или другом
                     надёжном месте.
@@ -596,7 +553,7 @@ export function AddGreetingDialog() {
                   <button
                     type="button"
                     onClick={closeDialog}
-                    className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-fg transition hover:bg-muted"
+                    className="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-fg transition hover:bg-rose-50"
                   >
                     Закрыть
                   </button>
@@ -611,39 +568,41 @@ export function AddGreetingDialog() {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-                <div className="space-y-2">
+              <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                <div className="space-y-2.5">
                   <Label htmlFor="name">Имя *</Label>
                   <Input
                     id="name"
                     placeholder="Например, Анна"
                     value={values.name}
                     onChange={handleInputChange("name")}
+                    className="h-12 rounded-2xl border-rose-200 bg-white px-4 shadow-sm transition focus-visible:ring-2 focus-visible:ring-rose-200"
                   />
                   {errors.name && (
                     <p className="text-sm text-red-600">{errors.name}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="relation">Кто вы маме</Label>
+                <div className="space-y-2.5">
+                  <Label htmlFor="relation">Ваша связь с Натальей</Label>
                   <Input
                     id="relation"
-                    placeholder="Например, дочь, подруга, коллега"
+                    placeholder="Например, подруга, коллега, дочь"
                     value={values.relation}
                     onChange={handleInputChange("relation")}
+                    className="h-12 rounded-2xl border-rose-200 bg-white px-4 shadow-sm transition focus-visible:ring-2 focus-visible:ring-rose-200"
                   />
                   {errors.relation && (
                     <p className="text-sm text-red-600">{errors.relation}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Label htmlFor="message">Текст поздравления</Label>
                   <textarea
                     id="message"
                     placeholder="Напишите тёплые слова или воспоминание"
-                    className="flex min-h-[140px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    className="min-h-[140px] w-full rounded-[28px] border border-rose-200 bg-white px-4 py-3 text-sm text-fg shadow-sm outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-rose-200"
                     value={values.message}
                     onChange={handleTextareaChange}
                   />
@@ -652,50 +611,98 @@ export function AddGreetingDialog() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="photo">Фото</Label>
-                  <Input
+
+                  <label
+                    htmlFor="photo"
+                    className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full border bg-[#ffe8df] text-[#7a4b3a] border-rose-200 hover:bg-[#ffd6c8] px-5 py-3 text-sm font-semibold  shadow-sm transition  hover:shadow-md"
+                  >
+                    Загрузить фото
+                  </label>
+
+                  <input
                     id="photo"
                     type="file"
                     accept="image/*"
                     onChange={handlePhotoChange}
+                    className="hidden"
                   />
+
                   {photoFile && (
                     <p className="text-sm text-muted-foreground">
                       Выбран файл: {photoFile.name}
                     </p>
                   )}
+
                   {errors.photo && (
                     <p className="text-sm text-red-600">{errors.photo}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="uploadedVideo">Короткое видео</Label>
-                  <Input
+
+                  <label
+                    htmlFor="uploadedVideo"
+                   className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full border bg-[#ffe8df] text-[#7a4b3a] border-rose-200 hover:bg-[#ffd6c8] px-5 py-3 text-sm font-semibold  shadow-sm transition  hover:shadow-md"
+                  >
+                    Загрузить видео
+                  </label>
+
+                  <input
                     id="uploadedVideo"
                     type="file"
                     accept="video/*"
                     onChange={handleUploadedVideoChange}
+                    className="hidden"
                   />
+
                   {uploadedVideoFile && (
                     <p className="text-sm text-muted-foreground">
                       Выбран файл: {uploadedVideoFile.name}
                     </p>
                   )}
+
                   {errors.uploadedVideo && (
                     <p className="text-sm text-red-600">{errors.uploadedVideo}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="externalVideoUrl">Ссылка на внешнее видео</Label>
-                  <Input
-                    id="externalVideoUrl"
-                    placeholder="Например, ссылка на YouTube"
-                    value={values.externalVideoUrl}
-                    onChange={handleInputChange("externalVideoUrl")}
-                  />
+                <div className="space-y-3">
+                  <Label>Видео по ссылке</Label>
+
+                  {!showExternalVideoInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowExternalVideoInput(true)}
+                      className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full border bg-[#ffe8df] text-[#7a4b3a] border-rose-200 hover:bg-[#ffd6c8] px-5 py-3 text-sm font-semibold  shadow-sm transition  hover:shadow-md"
+                    >
+                      Добавить ссылку
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <Input
+                        id="externalVideoUrl"
+                        placeholder="Вставьте ссылку на видео"
+                        value={values.externalVideoUrl}
+                        onChange={handleInputChange("externalVideoUrl")}
+                        className="h-12 rounded-2xl border-rose-200 bg-white px-4 shadow-sm transition focus-visible:ring-2 focus-visible:ring-rose-200"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowExternalVideoInput(false);
+                          handleValueChange("externalVideoUrl", "");
+                        }}
+                        className="text-sm font-medium text-rose-600 underline-offset-4 transition hover:underline"
+                      >
+                        Убрать ссылку
+                      </button>
+                    </div>
+                  )}
+
                   {errors.externalVideoUrl && (
                     <p className="text-sm text-red-600">
                       {errors.externalVideoUrl}
@@ -703,29 +710,7 @@ export function AddGreetingDialog() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="externalVideoPreviewImage">
-                    Превью-картинка для внешнего видео
-                  </Label>
-                  <Input
-                    id="externalVideoPreviewImage"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleExternalVideoPreviewImageChange}
-                  />
-                  {externalVideoPreviewImageFile && (
-                    <p className="text-sm text-muted-foreground">
-                      Выбран файл: {externalVideoPreviewImageFile.name}
-                    </p>
-                  )}
-                  {errors.externalVideoPreviewImage && (
-                    <p className="text-sm text-red-600">
-                      {errors.externalVideoPreviewImage}
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-rose-100 bg-white/80 p-4 text-sm leading-6 text-muted-foreground">
                   Можно оставить только текст. Фото, видео и внешняя ссылка —
                   необязательны.
                 </div>
@@ -742,21 +727,13 @@ export function AddGreetingDialog() {
                   </div>
                 )}
 
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={closeDialog}
-                    className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-fg transition hover:bg-muted"
-                  >
-                    Отмена
-                  </button>
-
+                <div className="pt-1">
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center justify-center rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-rose-500 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isSubmitting ? "Сохранение..." : "Сохранить поздравление"}
+                    {isSubmitting ? "Сохранение..." : "Сохранить"}
                   </button>
                 </div>
               </form>

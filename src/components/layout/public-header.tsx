@@ -45,13 +45,17 @@ export function PublicHeader() {
           onClick={closeMobileMenu}
         >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-300 via-pink-300 to-amber-200 text-lg font-bold text-white shadow-[0_10px_25px_rgba(242,124,156,0.28)]">
-            М
+            <img
+  src="/brand/logoNTV.png"
+  alt="Logo"
+  className="h-8 w-8 object-contain"
+/>
           </div>
 
           <div className="flex min-w-0 flex-col">
-            <span className="truncate text-lg font-bold leading-none text-rose-900 sm:text-xl">
+            {/* <span className="truncate text-lg font-bold leading-none text-rose-900 sm:text-xl">
               Мамин сайт
-            </span>
+            </span> */}
             <span className="truncate text-sm text-stone-600">
               С любовью от семьи
             </span>

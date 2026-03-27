@@ -7,7 +7,6 @@ export type GreetingStoredMedia = {
 
 export type GreetingExternalVideo = {
   url: string;
-  previewImage: GreetingStoredMedia | null;
 };
 
 export type Greeting = {
@@ -29,7 +28,6 @@ export type Greeting = {
   photoUrl: string | null;
   uploadedVideoUrl: string | null;
   externalVideoUrl: string | null;
-  externalVideoPreviewImageUrl: string | null;
 };
 
 export type GreetingLeanDocument = {
@@ -52,7 +50,6 @@ export type CreateGreetingMediaInput = {
 
 export type CreateGreetingExternalVideoInput = {
   url: string;
-  previewImage?: CreateGreetingMediaInput | null;
 };
 
 export type CreateGreetingInput = {
@@ -62,4 +59,12 @@ export type CreateGreetingInput = {
   photo?: CreateGreetingMediaInput | null;
   uploadedVideo?: CreateGreetingMediaInput | null;
   externalVideo?: CreateGreetingExternalVideoInput | null;
+};
+
+export type GreetingsCursor = string | null;
+
+export type GetLatestGreetingsResult = {
+  items: Greeting[];
+  nextCursor: GreetingsCursor;
+  hasMore: boolean;
 };

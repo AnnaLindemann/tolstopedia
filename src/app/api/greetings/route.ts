@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { connectToDatabase } from "@/lib/db";
+import { getLatestGreetings } from "@/lib/greetings/get-latest-greetings";
 import GreetingModel from "@/models/greeting.model";
+
+const DEFAULT_LIMIT = 10;
 
 type UploadedImageInput = {
   url?: string;
@@ -20,8 +23,6 @@ type UploadedVideoInput = {
 
 type ExternalVideoInput = {
   url?: string;
-  previewImageUrl?: string;
-  previewImagePublicId?: string;
 };
 
 type CreateGreetingRequestBody = {
@@ -55,7 +56,9 @@ async function createEditTokenHash(token: string): Promise<string> {
   return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function normalizePhoto(photo: UploadedImageInput | undefined): UploadedImageInput | null {
+function normalizePhoto(
+  photo: UploadedImageInput | undefined,
+): UploadedImageInput | null {
   if (!photo?.url && !photo?.publicId) {
     return null;
   }
@@ -87,19 +90,40 @@ function normalizeUploadedVideo(
 function normalizeExternalVideo(
   externalVideo: ExternalVideoInput | undefined,
 ): ExternalVideoInput | null {
-  if (
-    !externalVideo?.url &&
-    !externalVideo?.previewImageUrl &&
-    !externalVideo?.previewImagePublicId
-  ) {
+  if (!externalVideo?.url) {
     return null;
   }
 
   return {
-    url: externalVideo.url?.trim() ?? "",
-    previewImageUrl: externalVideo.previewImageUrl?.trim() ?? "",
-    previewImagePublicId: externalVideo.previewImagePublicId?.trim() ?? "",
+    url: externalVideo.url.trim(),
   };
+}
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+
+  const cursor = searchParams.get("cursor");
+  const limitParam = searchParams.get("limit");
+
+  const parsedLimit = limitParam ? Number(limitParam) : DEFAULT_LIMIT;
+  const limit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 50)
+      : DEFAULT_LIMIT;
+
+  try {
+    const result = await getLatestGreetings({
+      limit,
+      cursor,
+    });
+
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to load greetings" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -223,44 +247,6 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-
-      if (externalVideo.previewImageUrl) {
-        if (!externalVideo.url) {
-          return NextResponse.json(
-            {
-              error:
-                "External video preview image URL is allowed only with external video URL",
-            },
-            { status: 400 },
-          );
-        }
-
-        if (!isValidUrl(externalVideo.previewImageUrl)) {
-          return NextResponse.json(
-            { error: "External video preview image URL is invalid" },
-            { status: 400 },
-          );
-        }
-      }
-
-      if (externalVideo.previewImagePublicId && !externalVideo.previewImageUrl) {
-        return NextResponse.json(
-          {
-            error:
-              "External video preview image publicId is allowed only with external video preview image URL",
-          },
-          { status: 400 },
-        );
-      }
-
-      if (!externalVideo.url && (externalVideo.previewImageUrl || externalVideo.previewImagePublicId)) {
-        return NextResponse.json(
-          {
-            error: "External video preview image is allowed only with external video URL",
-          },
-          { status: 400 },
-        );
-      }
     }
 
     const hasMessage = Boolean(message);
@@ -307,8 +293,6 @@ export async function POST(request: Request) {
       externalVideo: externalVideo?.url
         ? {
             url: externalVideo.url,
-            previewImageUrl: externalVideo.previewImageUrl || null,
-            previewImagePublicId: externalVideo.previewImagePublicId || null,
           }
         : null,
       editTokenHash,

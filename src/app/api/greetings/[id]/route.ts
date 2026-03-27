@@ -20,7 +20,6 @@ type UpdateGreetingBody = {
   relation?: string;
   message?: string;
   externalVideoUrl?: string;
-  externalVideoPreviewImageUrl?: string;
   clearPhoto?: boolean;
   clearUploadedVideo?: boolean;
   photo?: UploadedMediaInput | null;
@@ -46,8 +45,6 @@ type GreetingDocumentShape = {
   } | null;
   externalVideo?: {
     url?: string | null;
-    previewImageUrl?: string | null;
-    previewImagePublicId?: string | null;
   } | null;
 };
 
@@ -143,9 +140,6 @@ export async function PATCH(request: Request, context: RouteContext) {
   const relation = normalizeOptionalString(body.relation);
   const message = normalizeOptionalString(body.message);
   const externalVideoUrl = normalizeOptionalString(body.externalVideoUrl);
-  const externalVideoPreviewImageUrl = normalizeOptionalString(
-    body.externalVideoPreviewImageUrl,
-  );
 
   const clearPhoto = normalizeBoolean(body.clearPhoto);
   const clearUploadedVideo = normalizeBoolean(body.clearUploadedVideo);
@@ -198,26 +192,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       {
         ok: false,
         message: "Ссылка на внешнее видео некорректна.",
-      },
-      { status: 400 },
-    );
-  }
-
-  if (externalVideoPreviewImageUrl && !externalVideoUrl) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "Ссылка на превью возможна только вместе со ссылкой на внешнее видео.",
-      },
-      { status: 400 },
-    );
-  }
-
-  if (externalVideoPreviewImageUrl && !isValidUrl(externalVideoPreviewImageUrl)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "Ссылка на превью видео некорректна.",
       },
       { status: 400 },
     );
@@ -300,12 +274,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         : (currentGreeting.uploadedVideo ?? null);
 
   const nextExternalVideo = externalVideoUrl
-    ? {
-        url: externalVideoUrl,
-        previewImageUrl: externalVideoPreviewImageUrl || null,
-        previewImagePublicId:
-          currentGreeting.externalVideo?.previewImagePublicId ?? null,
-      }
+    ? { url: externalVideoUrl }
     : null;
 
   const hasAnyAllowedContent =
@@ -364,8 +333,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       photoUrl: updatedGreeting.photo?.url ?? "",
       uploadedVideoUrl: updatedGreeting.uploadedVideo?.url ?? "",
       externalVideoUrl: updatedGreeting.externalVideo?.url ?? "",
-      externalVideoPreviewImageUrl:
-        updatedGreeting.externalVideo?.previewImageUrl ?? "",
     },
   });
 }

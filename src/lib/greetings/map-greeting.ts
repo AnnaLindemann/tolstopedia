@@ -21,6 +21,5 @@ export function mapGreetingLeanToPublic(greeting: GreetingLeanDocument): Greetin
     photoUrl: photo?.url ?? null,
     uploadedVideoUrl: uploadedVideo?.url ?? null,
     externalVideoUrl: externalVideo?.url ?? null,
-    externalVideoPreviewImageUrl: externalVideo?.previewImage?.url ?? null,
   };
 }

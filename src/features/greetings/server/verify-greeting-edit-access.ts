@@ -17,7 +17,6 @@ type VerifyGreetingEditAccessResult =
         photoUrl: string;
         uploadedVideoUrl: string;
         externalVideoUrl: string;
-        externalVideoPreviewImageUrl: string;
       };
     }
   | {
@@ -40,7 +39,6 @@ type GreetingLeanDocument = {
   } | null;
   externalVideo?: {
     url?: string | null;
-    previewImageUrl?: string | null;
   } | null;
 };
 
@@ -105,9 +103,6 @@ export async function verifyGreetingEditAccess({
       photoUrl: normalizeString(greeting.photo?.url),
       uploadedVideoUrl: normalizeString(greeting.uploadedVideo?.url),
       externalVideoUrl: normalizeString(greeting.externalVideo?.url),
-      externalVideoPreviewImageUrl: normalizeString(
-        greeting.externalVideo?.previewImageUrl,
-      ),
     },
   };
 }

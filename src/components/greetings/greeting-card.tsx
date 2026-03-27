@@ -52,7 +52,6 @@ export function GreetingCard({ greeting }: Props) {
   const hasPhoto = Boolean(greeting.photoUrl);
   const hasUploadedVideo = Boolean(greeting.uploadedVideoUrl);
   const hasExternalVideo = Boolean(greeting.externalVideoUrl);
-  const hasExternalPreview = Boolean(greeting.externalVideoPreviewImageUrl);
 
   const fullMessage = greeting.message ?? "";
   const shouldClampText = fullMessage.length > TEXT_PREVIEW_LIMIT;
@@ -91,7 +90,7 @@ export function GreetingCard({ greeting }: Props) {
             <button
               type="button"
               onClick={() => setIsExpanded((prev) => !prev)}
-              className="mt-2 text-sm font-medium text-rose-600 underline-offset-4 hover:underline"
+              className="mt-2 text-sm font-medium text-rose-600 underline-offset-4 transition hover:underline"
             >
               {isExpanded ? "Свернуть" : "Читать полностью"}
             </button>
@@ -123,29 +122,14 @@ export function GreetingCard({ greeting }: Props) {
       ) : null}
 
       {hasExternalVideo ? (
-        <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3">
-          {hasExternalPreview ? (
-            <a
-              href={greeting.externalVideoUrl ?? "#"}
-              target="_blank"
-              rel="noreferrer"
-              className="block"
-            >
-              <img
-                src={greeting.externalVideoPreviewImageUrl ?? ""}
-                alt="External video preview"
-                className="h-40 w-full rounded-lg object-cover"
-              />
-            </a>
-          ) : null}
-
+        <div className="mt-3 flex justify-center rounded-xl border border-border bg-muted/30 p-4">
           <a
             href={greeting.externalVideoUrl ?? "#"}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 inline-flex text-sm font-medium text-rose-600 underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-sm font-medium text-rose-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-50 hover:text-rose-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Открыть внешнее видео
+            Открыть видео
           </a>
         </div>
       ) : null}

@@ -10,7 +10,6 @@ type EditGreetingFormValues = {
   relation: string;
   message: string;
   externalVideoUrl: string;
-  externalVideoPreviewImageUrl: string;
   photoUrl?: string;
   uploadedVideoUrl?: string;
 };
@@ -43,7 +42,6 @@ type EditGreetingResponse = {
     photoUrl?: string;
     uploadedVideoUrl?: string;
     externalVideoUrl: string;
-    externalVideoPreviewImageUrl: string;
   };
 };
 
@@ -119,10 +117,6 @@ export function EditGreetingForm({
   const [externalVideoUrl, setExternalVideoUrl] = useState(
     initialValues.externalVideoUrl,
   );
-  const [
-    externalVideoPreviewImageUrl,
-    setExternalVideoPreviewImageUrl,
-  ] = useState(initialValues.externalVideoPreviewImageUrl);
 
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState(initialValues.photoUrl ?? "");
   const [currentUploadedVideoUrl, setCurrentUploadedVideoUrl] = useState(
@@ -147,10 +141,6 @@ export function EditGreetingForm({
   const trimmedExternalVideoUrl = useMemo(
     () => externalVideoUrl.trim(),
     [externalVideoUrl],
-  );
-  const trimmedExternalVideoPreviewImageUrl = useMemo(
-    () => externalVideoPreviewImageUrl.trim(),
-    [externalVideoPreviewImageUrl],
   );
 
   const willHavePhoto = !clearPhoto && (Boolean(newPhotoFile) || Boolean(currentPhotoUrl));
@@ -187,13 +177,6 @@ export function EditGreetingForm({
       return;
     }
 
-    if (trimmedExternalVideoPreviewImageUrl && !trimmedExternalVideoUrl) {
-      setErrorMessage(
-        "Ссылка на превью видео возможна только вместе со ссылкой на внешнее видео.",
-      );
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -222,7 +205,6 @@ export function EditGreetingForm({
           relation: trimmedRelation,
           message: trimmedMessage,
           externalVideoUrl: trimmedExternalVideoUrl,
-          externalVideoPreviewImageUrl: trimmedExternalVideoPreviewImageUrl,
           clearPhoto,
           clearUploadedVideo,
           photo: uploadedPhoto,
@@ -244,9 +226,6 @@ export function EditGreetingForm({
         setRelation(data.greeting.relation);
         setMessage(data.greeting.message);
         setExternalVideoUrl(data.greeting.externalVideoUrl);
-        setExternalVideoPreviewImageUrl(
-          data.greeting.externalVideoPreviewImageUrl,
-        );
         setCurrentPhotoUrl(data.greeting.photoUrl ?? "");
         setCurrentUploadedVideoUrl(data.greeting.uploadedVideoUrl ?? "");
       } else {
@@ -611,40 +590,6 @@ export function EditGreetingForm({
           placeholder="https://..."
         />
       </div>
-
-      <div className="space-y-2">
-        <label
-          htmlFor="externalVideoPreviewImageUrl"
-          className="text-sm font-medium text-neutral-900"
-        >
-          Ссылка на превью видео
-        </label>
-        <input
-          id="externalVideoPreviewImageUrl"
-          name="externalVideoPreviewImageUrl"
-          type="url"
-          value={externalVideoPreviewImageUrl}
-          onChange={(event) =>
-            setExternalVideoPreviewImageUrl(event.target.value)
-          }
-          disabled={isSubmitting || isDeleting}
-          className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-base text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-60"
-          placeholder="https://..."
-        />
-      </div>
-
-      {trimmedExternalVideoPreviewImageUrl ? (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-neutral-900">
-            Текущее превью внешнего видео
-          </p>
-          <img
-            src={trimmedExternalVideoPreviewImageUrl}
-            alt="External video preview"
-            className="h-56 w-full rounded-2xl border border-neutral-200 object-cover"
-          />
-        </div>
-      ) : null}
 
       {trimmedExternalVideoUrl ? (
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">

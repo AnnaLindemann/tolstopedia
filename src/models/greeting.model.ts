@@ -68,16 +68,6 @@ const externalVideoSchema = new Schema(
       required: true,
       trim: true,
     },
-    previewImageUrl: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    previewImagePublicId: {
-      type: String,
-      trim: true,
-      default: null,
-    },
   },
   {
     _id: false,
@@ -117,6 +107,10 @@ const greetingSchema = new Schema(
       type: externalVideoSchema,
       default: null,
     },
+    isHidden: {
+      type: Boolean,
+      default: false,
+    },
     editTokenHash: {
       type: String,
       required: true,
@@ -152,25 +146,8 @@ greetingSchema.pre("validate", function normalizeEmptyStrings() {
   }
 
   const externalVideo = this.externalVideo;
-  if (externalVideo) {
-    if (typeof externalVideo.url === "string" && externalVideo.url.trim() === "") {
-      this.set("externalVideo", null);
-      return;
-    }
-
-    if (
-      typeof externalVideo.previewImageUrl === "string" &&
-      externalVideo.previewImageUrl.trim() === ""
-    ) {
-      externalVideo.previewImageUrl = null;
-    }
-
-    if (
-      typeof externalVideo.previewImagePublicId === "string" &&
-      externalVideo.previewImagePublicId.trim() === ""
-    ) {
-      externalVideo.previewImagePublicId = null;
-    }
+  if (externalVideo && typeof externalVideo.url === "string" && externalVideo.url.trim() === "") {
+    this.set("externalVideo", null);
   }
 });
 
@@ -190,21 +167,7 @@ greetingSchema.pre("validate", function validateGreetingContent() {
   if (!hasMessage && !hasPhoto && !hasUploadedVideo && !hasExternalVideo) {
     this.invalidate(
       "message",
-      "Greeting must contain at least one of: message, photo, uploaded video, or external video link",
-    );
-  }
-
-  if (externalVideo?.previewImageUrl && !externalVideo.url) {
-    this.invalidate(
-      "externalVideo.previewImageUrl",
-      "Preview image is allowed only together with external video link",
-    );
-  }
-
-  if (externalVideo?.previewImagePublicId && !externalVideo.previewImageUrl) {
-    this.invalidate(
-      "externalVideo.previewImagePublicId",
-      "Preview image public ID is allowed only together with preview image URL",
+      "Поздравление должно содержать: текст, фото, загруженное видео или ссылку на видео",
     );
   }
 });
