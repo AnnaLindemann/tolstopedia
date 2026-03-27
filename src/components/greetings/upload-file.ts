@@ -1,6 +1,7 @@
 export type UploadedAsset = {
   url: string;
   publicId: string;
+  duration?: number;
 };
 
 type UploadFileParams = {
@@ -13,6 +14,7 @@ type UploadResponse = {
   asset: {
     url: string;
     publicId: string;
+    duration?: number;
   };
 };
 
@@ -42,6 +44,8 @@ export async function uploadFile({
   return {
     url: data.asset.url,
     publicId: data.asset.publicId,
+    duration:
+      typeof data.asset.duration === "number" ? data.asset.duration : undefined,
   };
 }
 
@@ -62,5 +66,12 @@ function isUploadResponse(value: unknown): value is UploadResponse {
 
   const asset = candidate.asset as Record<string, unknown>;
 
-  return typeof asset.url === "string" && typeof asset.publicId === "string";
+  const hasValidDuration =
+    asset.duration === undefined || typeof asset.duration === "number";
+
+  return (
+    typeof asset.url === "string" &&
+    typeof asset.publicId === "string" &&
+    hasValidDuration
+  );
 }

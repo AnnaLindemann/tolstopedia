@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -11,10 +12,16 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+    const folderValue = formData.get("folder");
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "File is required" }, { status: 400 });
     }
+
+    const folder =
+      typeof folderValue === "string" && folderValue.trim().length > 0
+        ? folderValue.trim()
+        : "mom-site";
 
     const fileType = file.type;
     const fileSize = file.size;
@@ -25,21 +32,21 @@ export async function POST(request: Request) {
     if (!isImage && !isVideo) {
       return NextResponse.json(
         { error: "Unsupported file type" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (isImage && fileSize > MAX_IMAGE_SIZE) {
       return NextResponse.json(
         { error: "Image too large (max 10MB)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (isVideo && fileSize > MAX_VIDEO_SIZE) {
       return NextResponse.json(
         { error: "Video too large (max 100MB)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -47,7 +54,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     const uploadResult = await uploadBufferToCloudinary(buffer, {
-      folder: "mom-site",
+      folder,
       resource_type: isImage ? "image" : "video",
     });
 
@@ -58,9 +65,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Upload error:", error);
 
-    return NextResponse.json(
-      { error: "Upload failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }
