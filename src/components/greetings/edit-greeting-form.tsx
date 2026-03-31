@@ -94,10 +94,13 @@ async function uploadFile(params: {
 
   const data: unknown = await response.json().catch(() => null);
 
-  if (!response.ok) {
-    throw new Error("Не удалось загрузить файл");
+ if (!response.ok) {
+  if (response.status === 413) {
+    throw new Error("Файл слишком большой для загрузки через сайт. Попробуйте выбрать файл меньшего размера.");
   }
 
+  throw new Error("Не удалось загрузить файл");
+}
   if (!isUploadResponse(data)) {
     throw new Error("Сервер вернул некорректный ответ при загрузке файла");
   }
@@ -319,14 +322,25 @@ export function EditGreetingForm({
     setClearUploadedVideo(false);
   }
 
-  function handleNewPhotoChange(event: React.ChangeEvent<HTMLInputElement>): void {
-    const file = event.target.files?.[0] ?? null;
-    setNewPhotoFile(file);
+ function handleNewPhotoChange(event: React.ChangeEvent<HTMLInputElement>): void {
+  const file = event.target.files?.[0] ?? null;
 
-    if (file) {
-      setClearPhoto(false);
-    }
+  if (!file) {
+    setNewPhotoFile(null);
+    return;
   }
+
+  if (file.size > 4 * 1024 * 1024) {
+    setErrorMessage("Фото слишком большое. Пожалуйста, выберите файл до 4 MB.");
+    event.target.value = "";
+    setNewPhotoFile(null);
+    return;
+  }
+
+  setErrorMessage("");
+  setNewPhotoFile(file);
+  setClearPhoto(false);
+}
 
   function handleNewUploadedVideoChange(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -502,6 +516,9 @@ export function EditGreetingForm({
           disabled={isSubmitting || isDeleting}
           className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900"
         />
+        <p className="text-sm leading-6 text-neutral-500">
+  Фото: JPG, PNG, WebP. Рекомендуемый размер — до 4 MB.
+</p>
         {newPhotoFile ? (
           <p className="text-sm text-neutral-600">
             Выбран файл: {newPhotoFile.name}
@@ -565,6 +582,9 @@ export function EditGreetingForm({
           disabled={isSubmitting || isDeleting}
           className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900"
         />
+        <p className="text-sm leading-6 text-neutral-500">
+  Видео: лучше загружать небольшие файлы. Если файл слишком большой, загрузка может быть отклонена платформой.
+</p>
         {newUploadedVideoFile ? (
           <p className="text-sm text-neutral-600">
             Выбран файл: {newUploadedVideoFile.name}
