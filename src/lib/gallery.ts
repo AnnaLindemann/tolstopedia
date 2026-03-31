@@ -52,7 +52,7 @@ export async function getAdminGalleryItems(): Promise<GalleryItemListItem[]> {
   await connectToDatabase();
 
   const items = await GalleryItemModel.find({})
-    .sort({ order: 1, createdAt: -1 })
+    .sort({ order: 1, _id: 1 })
     .exec();
 
   return items.map(mapGalleryItem);
@@ -62,10 +62,42 @@ export async function getPublishedGalleryItems(): Promise<GalleryItemListItem[]>
   await connectToDatabase();
 
   const items = await GalleryItemModel.find({ isPublished: true })
-    .sort({ order: 1, createdAt: -1 })
+    .sort({ order: 1, _id: 1 })
     .exec();
 
   return items.map(mapGalleryItem);
+}
+
+export async function reorderGalleryItems(orderedIds: string[]): Promise<void> {
+  if (orderedIds.length === 0) return;
+
+  await connectToDatabase();
+
+  const totalCount = await GalleryItemModel.countDocuments();
+
+  if (orderedIds.length !== totalCount) {
+    throw new Error(
+      `items length (${orderedIds.length}) does not match total gallery count (${totalCount})`,
+    );
+  }
+
+  const existingItems = await GalleryItemModel.find(
+    { _id: { $in: orderedIds } },
+    { _id: 1 },
+  ).exec();
+
+  if (existingItems.length !== orderedIds.length) {
+    throw new Error("Some gallery item IDs were not found");
+  }
+
+  const ops = orderedIds.map((id, index) => ({
+    updateOne: {
+      filter: { _id: id },
+      update: { $set: { order: index } },
+    },
+  }));
+
+  await GalleryItemModel.bulkWrite(ops);
 }
 
 export async function createGalleryItem(

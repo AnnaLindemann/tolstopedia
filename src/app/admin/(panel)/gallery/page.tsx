@@ -137,8 +137,8 @@ export default async function AdminGalleryPage() {
       <section>
         <h2 className="text-2xl font-semibold text-neutral-900">Галерея</h2>
         <p className="mt-1 text-sm text-neutral-600">
-          Здесь можно загрузить фото, изменить title, удалить элемент и
-          проверить, как он выглядит.
+          Здесь можно загрузить фото, менять порядок, редактировать title,
+          удалять элемент и проверять, как он выглядит.
         </p>
       </section>
 
