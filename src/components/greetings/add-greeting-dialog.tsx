@@ -682,7 +682,7 @@ function handlePhotoChange(event: ChangeEvent<HTMLInputElement>): void {
                     className="hidden"
                   />
 <p className="text-sm leading-6 text-muted-foreground">
-  Видео: MP4, WebM, MOV. Рекомендуемый размер — до 4 MB.
+  Видео: MP4, WebM, MOV. 
 </p>
                   {uploadedVideoFile && (
                     <p className="text-sm text-muted-foreground">
