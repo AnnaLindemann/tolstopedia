@@ -186,6 +186,12 @@ async function uploadFile(params: {
   const data: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 413) {
+      throw new Error(
+        "Файл слишком большой. Пожалуйста, выберите файл меньшего размера.",
+      );
+    }
+
     throw new Error("Не удалось загрузить файл");
   }
 
@@ -283,24 +289,42 @@ export function AddGreetingDialog() {
     handleValueChange("message", event.target.value);
   }
 
-  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>): void {
-    const file = event.target.files?.[0] ?? null;
-    setPhotoFile(file);
+function handlePhotoChange(event: ChangeEvent<HTMLInputElement>): void {
+  const file = event.target.files?.[0] ?? null;
 
-    setErrors((prev) => {
-      if (!prev.photo) {
-        return prev;
-      }
+  if (!file) {
+    setPhotoFile(null);
+    return;
+  }
 
-      const nextErrors = { ...prev };
-      delete nextErrors.photo;
-      return nextErrors;
-    });
+  if (file.size > 4 * 1024 * 1024) {
+    setPhotoFile(null);
+
+    setErrors((prev) => ({
+      ...prev,
+      photo: "Фото слишком большое. Пожалуйста, выберите файл до 4 MB.",
+    }));
 
     if (submitError) {
       setSubmitError("");
     }
+
+    event.target.value = "";
+    return;
   }
+
+  setPhotoFile(file);
+
+  setErrors((prev) => {
+    const nextErrors = { ...prev };
+    delete nextErrors.photo;
+    return nextErrors;
+  });
+
+  if (submitError) {
+    setSubmitError("");
+  }
+}
 
   function handleUploadedVideoChange(
     event: ChangeEvent<HTMLInputElement>,
@@ -628,7 +652,9 @@ export function AddGreetingDialog() {
                     onChange={handlePhotoChange}
                     className="hidden"
                   />
-
+<p className="text-sm leading-6 text-muted-foreground">
+  Фото: JPG, PNG, WebP. Максимальный размер — 4 MB.
+</p>
                   {photoFile && (
                     <p className="text-sm text-muted-foreground">
                       Выбран файл: {photoFile.name}
