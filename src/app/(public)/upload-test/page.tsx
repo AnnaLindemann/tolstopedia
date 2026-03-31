@@ -101,7 +101,7 @@ export default function UploadTestPage() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+          accept="image/jpeg,image/png,image/webp"
           onChange={handleFileChange}
           className="hidden"
         />

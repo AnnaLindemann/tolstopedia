@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { uploadVideoToCloudinary } from "@/lib/cloudinary-upload-client";
 
 type EditGreetingFormValues = {
   id: string;
@@ -191,10 +192,7 @@ export function EditGreetingForm({
         : null;
 
       const uploadedVideo = newUploadedVideoFile
-        ? await uploadFile({
-            file: newUploadedVideoFile,
-            folder: "mom-site/greetings/videos",
-          })
+        ? await uploadVideoToCloudinary(newUploadedVideoFile, "mom-site/greetings/videos")
         : null;
 
       const response = await fetch(`/api/greetings/${initialValues.id}`, {

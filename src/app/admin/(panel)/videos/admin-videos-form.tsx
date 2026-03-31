@@ -10,10 +10,8 @@ import {
 } from "react";
 import { useFormStatus } from "react-dom";
 
-import {
-  uploadFile,
-  type UploadedAsset,
-} from "@/components/greetings/upload-file";
+import { type UploadedAsset } from "@/components/greetings/upload-file";
+import { uploadVideoToCloudinary } from "@/lib/cloudinary-upload-client";
 import type { CreateVideoItemFormState } from "./page";
 
 type AdminVideosFormProps = {
@@ -97,10 +95,7 @@ export default function AdminVideosForm({ action }: AdminVideosFormProps) {
     setIsUploading(true);
 
     try {
-      const uploadedAsset = await uploadFile({
-        file,
-        folder: "mom-site/videos",
-      });
+      const uploadedAsset = await uploadVideoToCloudinary(file, "mom-site/videos");
 
       setUploadedVideo(uploadedAsset);
     } catch {

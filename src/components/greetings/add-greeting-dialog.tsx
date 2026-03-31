@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { uploadVideoToCloudinary } from "@/lib/cloudinary-upload-client";
 
 type FormValues = {
   name: string;
@@ -400,10 +401,7 @@ function handlePhotoChange(event: ChangeEvent<HTMLInputElement>): void {
         : null;
 
       const uploadedVideo = uploadedVideoFile
-        ? await uploadFile({
-            file: uploadedVideoFile,
-            folder: "mom-site/greetings/videos",
-          })
+        ? await uploadVideoToCloudinary(uploadedVideoFile, "mom-site/greetings/videos")
         : null;
 
       const body = {
