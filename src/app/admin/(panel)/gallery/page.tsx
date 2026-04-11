@@ -7,6 +7,8 @@ import { GalleryItemModel } from "@/models/gallery-item.model";
 import AdminGalleryForm from "./admin-gallery-form";
 import GalleryAdminList from "./gallery-admin-list";
 
+export const dynamic = "force-dynamic";
+
 export type CreateGalleryItemFormState = {
   error: string | null;
   success: string | null;
