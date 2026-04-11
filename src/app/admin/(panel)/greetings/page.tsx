@@ -5,6 +5,8 @@ import GreetingModel from "@/models/greeting.model";
 import { connectToDatabase } from "@/lib/db";
 import AdminGreetingDeleteButton from "../../admin-greeting-delete-button";
 
+export const dynamic = "force-dynamic";
+
 type AdminGreetingItem = {
   id: string;
   name: string;
