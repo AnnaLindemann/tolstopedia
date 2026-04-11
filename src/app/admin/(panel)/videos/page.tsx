@@ -7,6 +7,8 @@ import { VideoItemModel } from "@/models/video-item.model";
 import AdminVideosForm from "./admin-videos-form";
 import VideosAdminList from "./videos-admin-list";
 
+export const dynamic = "force-dynamic";
+
 export type CreateVideoItemFormState = {
   error: string | null;
   success: string | null;
